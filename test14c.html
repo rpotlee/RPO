@@ -1,1 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>44coin Group Strategy Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; background: #f6f8fa; margin:0;}
+    .container { max-width: 650px; margin: 30px auto 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #aaa; padding: 18px 5vw 28px 5vw; }
+    .centered { text-align: center; }
+    .coin-combo { font-size: 2.2em; font-weight: bold; margin: 6px 0 24px 0; letter-spacing: 10px; }
+    .rules-table { width: 100%; margin: 0 auto 18px auto; }
+    .rules-table th, .rules-table td { padding: 5px 9px; border: 1px solid #ddd; }
+    .rules-header { font-size: 1.22em; font-weight: bold; text-align: center; margin-bottom: 12px; margin-top: 0; }
+    .unhide-btn { margin-bottom: 10px; margin-top: 10px; display: inline-block;}
+    .knight-view { font-size: 1.4em; font-weight: bold; margin-bottom: 11px; margin-top: 18px;}
+    .question { font-size: 1.08em; margin-bottom: 7px; }
+    .choices label { display: block; margin-bottom: 4px; }
+    .full-groups { background: #f9f9fc; padding: 12px; margin: 8px 0; border-radius: 6px; }
+    .feedback { font-weight: bold; font-size: 1.12em; margin: 13px 0 6px 0; }
+    .btn { padding: 8px 20px; margin: 10px 6px 0 0; border: none; border-radius: 4px; background: #3282e6; color: #fff; cursor: pointer; font-size: 1.1em;}
+    .btn:disabled { background: #bbb; }
+    .back-btn { background: #aaa; color: #fff;}
+    .btn-block { display: block; width: 100%; margin: 12px 0;}
+    .italic { font-style: italic;}
+    @media (max-width: 600px) {
+      .container { padding: 10px 2vw 22px 2vw; }
+      .rules-table th, .rules-table td { padding: 4px 3px; font-size: 0.98em; }
+      .coin-combo { font-size: 1.4em; letter-spacing: 5px; }
+      .knight-view { font-size: 1.09em;}
+      .btn { font-size: 1em; padding: 8px 8vw;}
+      .btn-block { font-size: 1em;}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
 
+  <!-- Coin combo hide/unhide, centered -->
+  <div class="centered">
+    <button id="toggleBtn" class="unhide-btn btn">Unhide 🔍</button>
+    <div id="coinCombo" class="coin-combo" style="display:none;"></div>
+  </div>
+  <div style="height: 20px;"></div>
+
+  <!-- Group Rules Table, centered -->
+  <div class="rules-header centered">Group Rules Table</div>
+  <table class="rules-table">
+    <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
+    <tr><td>1</td><td>0</td><td>0</td><td>A</td></tr>
+    <tr><td>2</td><td>0</td><td>1</td><td>B</td></tr>
+    <tr><td>3</td><td>1</td><td>0</td><td>C</td></tr>
+    <tr><td>4</td><td>1</td><td>1</td><td>D</td></tr>
+  </table>
+  <div class="centered" style="margin-bottom: 20px;">Rule: Wrong knight <b>flips</b> their actual coin value when guessing.</div>
+
+  <div id="mainFlow"></div>
+</div>
+
+<script>
+  // Generate all 16 coin combos
+  function allCombos() {
+    let out = [];
+    for (let i = 0; i < 16; ++i) {
+      out.push([ (i>>3)&1, (i>>2)&1, (i>>1)&1, i&1 ]);
+    }
+    return out;
+  }
+
+  const combos = allCombos();
+  let comboIdx = 0; // start with 0
+
+  const knightNames = ['A','B','C','D'];
+
+  const groups = [
+    {id:1, A:0, B:0, wrong:'A'},
+    {id:2, A:0, B:1, wrong:'B'},
+    {id:3, A:1, B:0, wrong:'C'},
+    {id:4, A:1, B:1, wrong:'D'}
+  ];
+
+  // State
+  let currentKnight = 0;
+  let historyStack = [];
+  let coinShown = false;
+
+  const coinDiv = document.getElementById('coinCombo');
+  const toggleBtn = document.getElementById('toggleBtn');
+
+  function updateCoinDisplay() {
+    if (coinShown) {
+      coinDiv.innerText = combos[comboIdx].join('');
+      coinDiv.style.display = '';
+      toggleBtn.innerHTML = "Hide &nbsp;&#128065;";
+    } else {
+      coinDiv.style.display = 'none';
+      toggleBtn.innerHTML = "Unhide &nbsp;&#128269;";
+    }
+  }
+
+  toggleBtn.onclick = function() {
+    coinShown = !coinShown;
+    updateCoinDisplay();
+  };
+
+  function startKnightFlow(knightIdx, stepIdx=0, state={}) {
+    let mainDiv = document.getElementById('mainFlow');
+    mainDiv.innerHTML = '';
+    const coinCombo = combos[comboIdx];
+    // Knight's view stays at top
+    const others = [0,1,2,3].filter(x => x !== knightIdx);
+    const viewStr = others.map(j => coinCombo[j]).join('');
+    const viewNames = others.map(j => knightNames[j] + '=' + coinCombo[j]).join(', ');
+    const knightViewDiv = document.createElement('div');
+    knightViewDiv.className = 'knight-view';
+    knightViewDiv.innerText = `Knight ${knightNames[knightIdx]} view: ${viewStr} (${viewNames})`;
+    mainDiv.appendChild(knightViewDiv);
+
+    if (stepIdx === 0) {
+      // Which group do you belong to? ALL choices, always checkboxes.
+      const questionDiv = document.createElement('div');
+      questionDiv.className = 'question';
+      questionDiv.innerText = 'Which group do you belong to?';
+      mainDiv.appendChild(questionDiv);
+      const choicesDiv = document.createElement('div');
+      choicesDiv.className = 'choices';
+      groups.forEach(g => {
+        let inp = document.createElement('input');
+        inp.type = 'checkbox';
+        inp.name = 'groupChoice';
+        inp.value = g.id;
+        inp.id = 'group_'+g.id;
+        let label = document.createElement('label');
+        label.htmlFor = inp.id;
+        label.innerText = `Group ${g.id} (A=${g.A}, B=${g.B})`;
+        choicesDiv.appendChild(inp);
+        choicesDiv.appendChild(label);
+      });
+      mainDiv.appendChild(choicesDiv);
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-block';
+      nextBtn.innerText = 'Next >';
+      mainDiv.appendChild(nextBtn);
+      // Back button
+      if (!(knightIdx === 0 && stepIdx === 0)) {
+        const backBtn = document.createElement('button');
+        backBtn.className = 'btn back-btn btn-block';
+        backBtn.innerText = '< Back';
+        mainDiv.appendChild(backBtn);
+        backBtn.onclick = function() {
+          doBack();
+        };
+      }
+      nextBtn.onclick = function() {
+        let selectedGroups = [];
+        document.getElementsByName('groupChoice').forEach((el) => {
+          if(el.checked) selectedGroups.push(parseInt(el.value));
+        });
+        if(selectedGroups.length === 0) {
+          alert('Select at least one group.');
+          return;
+        }
+        pushHistory(knightIdx, stepIdx, Object.assign({}, state));
+        // Contradiction check only if multiple groups are selected, else go to guess
+        if (selectedGroups.length > 1) {
+          startKnightFlow(knightIdx, 1, {selectedGroups});
+        } else {
+          startKnightFlow(knightIdx, 2, {groupId: selectedGroups[0]});
+        }
+      };
+    }
+    else if (stepIdx === 1) {
+      // Contradiction check step for multiple selected groups
+      const selectedGroups = state.selectedGroups;
+      const coinCombo = combos[comboIdx];
+      const combosDiv = document.createElement('div');
+      combosDiv.className = 'full-groups';
+      combosDiv.innerHTML = '<b>Full coin combos for your selection:</b><br>';
+      selectedGroups.forEach(id => {
+        const g = groups.find(x => x.id === id);
+        let combo = [g.A, g.B, coinCombo[2], coinCombo[3]];
+        combosDiv.innerHTML += `Group ${g.id}: ${combo.join('')} (A=${combo[0]}, B=${combo[1]}, C=${combo[2]}, D=${combo[3]})<br>`;
+      });
+      mainDiv.appendChild(combosDiv);
+      // Contradiction question
+      const cQDiv = document.createElement('div');
+      cQDiv.className = 'question';
+      cQDiv.innerText = 'Look at the rules table. Which one does NOT contradict?';
+      mainDiv.appendChild(cQDiv);
+      // Choices
+      const choicesDiv = document.createElement('div');
+      choicesDiv.className = 'choices';
+      selectedGroups.forEach(id => {
+        const g = groups.find(x => x.id === id);
+        let ruleText = '';
+        if (g.wrong === 'A') ruleText = 'A flips coin: A=' + (1 - coinCombo[0]);
+        if (g.wrong === 'B') ruleText = 'B flips coin: B=' + (1 - coinCombo[1]);
+        if (g.wrong === 'C') ruleText = 'C flips coin: C=' + (1 - coinCombo[2]);
+        if (g.wrong === 'D') ruleText = 'D flips coin: D=' + (1 - coinCombo[3]);
+        let inp = document.createElement('input');
+        inp.type = 'radio';
+        inp.name = 'contradictChoice';
+        inp.value = g.id;
+        inp.id = 'contradict_'+g.id;
+        let label = document.createElement('label');
+        label.htmlFor = inp.id;
+        label.innerText = `Group ${g.id} (rule: ${ruleText})`;
+        choicesDiv.appendChild(inp);
+        choicesDiv.appendChild(label);
+      });
+      mainDiv.appendChild(choicesDiv);
+      // Next/Back buttons
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-block';
+      nextBtn.innerText = 'Next >';
+      mainDiv.appendChild(nextBtn);
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn back-btn btn-block';
+      backBtn.innerText = '< Back';
+      mainDiv.appendChild(backBtn);
+      backBtn.onclick = function() {
+        doBack();
+      };
+      nextBtn.onclick = function() {
+        let sel = Array.from(document.getElementsByName('contradictChoice')).find(el=>el.checked);
+        if (!sel) {
+          alert('Select a group.');
+          return;
+        }
+        pushHistory(knightIdx, stepIdx, Object.assign({}, state));
+        startKnightFlow(knightIdx, 2, {groupId: parseInt(sel.value)});
+      };
+    }
+    else if (stepIdx === 2) {
+      // Guess step
+      const groupId = state.groupId;
+      // Question formatted as requested
+      const qDiv = document.createElement('div');
+      qDiv.innerHTML = '<b>Guess your coin:</b>';
+      mainDiv.appendChild(qDiv);
+      const iDiv = document.createElement('div');
+      iDiv.className = "italic";
+      iDiv.innerText = '(Remember: If you are the wrong knight, flip your coin when guessing.)';
+      mainDiv.appendChild(iDiv);
+
+      // Guess buttons
+      const btn0 = document.createElement('button');
+      btn0.className = 'btn btn-block';
+      btn0.innerText = '0';
+      const btn1 = document.createElement('button');
+      btn1.className = 'btn btn-block';
+      btn1.innerText = '1';
+      mainDiv.appendChild(btn0);
+      mainDiv.appendChild(btn1);
+
+      // Feedback area
+      const fbDiv = document.createElement('div');
+      fbDiv.className = 'feedback';
+      mainDiv.appendChild(fbDiv);
+
+      // Next/Back buttons
+      const nextK = document.createElement('button');
+      nextK.className = 'btn btn-block';
+      nextK.style.display = 'none';
+      nextK.innerText = (knightIdx < 3) ? 'Next Knight >' : 'Show Summary';
+      mainDiv.appendChild(nextK);
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn back-btn btn-block';
+      backBtn.innerText = '< Back';
+      mainDiv.appendChild(backBtn);
+      backBtn.onclick = function() {
+        doBack();
+      };
+
+      // Guess logic
+      btn0.onclick = btn1.onclick = function() {
+        btn0.disabled = true; btn1.disabled = true;
+        const group = groups.find(g => g.id === groupId);
+        const isWrong = group.wrong === knightNames[knightIdx];
+        const actual = combos[comboIdx][knightIdx];
+        const expected = isWrong ? 1 - actual : actual;
+        const guess = parseInt(this.innerText);
+        fbDiv.innerHTML = (guess === expected) ? '<span style="color:green">Correct!</span>' : '<span style="color:red">Wrong!</span>';
+        nextK.style.display = '';
+      };
+      nextK.onclick = function() {
+        pushHistory(knightIdx, stepIdx, Object.assign({}, state));
+        if (knightIdx < 3) {
+          startKnightFlow(knightIdx+1, 0, {});
+        } else {
+          showSummary();
+        }
+      };
+    }
+    updateCoinDisplay();
+  }
+
+  function showSummary() {
+    let mainDiv = document.getElementById('mainFlow');
+    mainDiv.innerHTML = '<b>All knights have guessed for this combination.</b><br><br>';
+    // Try Again button
+    const tryBtn = document.createElement('button');
+    tryBtn.className = 'btn btn-block';
+    tryBtn.innerText = 'Try Again';
+    mainDiv.appendChild(tryBtn);
+    tryBtn.onclick = function() {
+      // reload same combo, same index
+      coinShown = false;
+      historyStack = [];
+      startKnightFlow(0,0,{});
+    };
+    // Next Combination button
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn-block';
+    nextBtn.innerText = 'Next Combination';
+    mainDiv.appendChild(nextBtn);
+    nextBtn.onclick = function() {
+      comboIdx = (comboIdx + 1) % combos.length;
+      coinShown = false;
+      historyStack = [];
+      startKnightFlow(0,0,{});
+    };
+    // Show current combo number
+    const idxDiv = document.createElement('div');
+    idxDiv.className = "centered";
+    idxDiv.style.marginTop = "20px";
+    idxDiv.style.color = "#888";
+    idxDiv.innerText = `Combination ${comboIdx+1} of ${combos.length}`;
+    mainDiv.appendChild(idxDiv);
+    updateCoinDisplay();
+  }
+
+  // History stack for back button
+  function pushHistory(knightIdx, stepIdx, state) {
+    historyStack.push({
+      knightIdx, stepIdx, state: JSON.parse(JSON.stringify(state)), comboIdx: comboIdx, coinShown: coinShown
+    });
+  }
+  function doBack() {
+    if (historyStack.length === 0) return;
+    let last = historyStack.pop();
+    comboIdx = last.comboIdx;
+    coinShown = last.coinShown;
+    startKnightFlow(last.knightIdx, last.stepIdx, last.state);
+  }
+
+  // Start with Knight A, step 0
+  startKnightFlow(0,0,{});
+</script>
+</body>
+</html>
