@@ -1,1 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>44coin Group Strategy Simulator</title>
+  <style>
+    body { font-family: sans-serif; background: #f6f8fa; }
+    .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #aaa; padding: 32px; }
+    .centered { text-align: center; }
+    .coin-combo { font-size: 2.2em; font-weight: bold; margin: 6px 0 24px 0; letter-spacing: 10px; }
+    .rules-table { width: 100%; margin: 0 auto 18px auto; }
+    .rules-table th, .rules-table td { padding: 5px 9px; border: 1px solid #ddd; }
+    .rules-header { font-size: 1.22em; font-weight: bold; text-align: center; margin-bottom: 12px; margin-top: 0; }
+    .unhide-btn { margin-bottom: 10px; margin-top: 10px; display: inline-block;}
+    .dropdown { margin-bottom: 20px; font-size: 1.08em; }
+    .knight-view { font-size: 1.4em; font-weight: bold; margin-bottom: 12px; }
+    .question { font-size: 1.1em; margin-bottom: 6px; }
+    .choices label { display: block; margin-bottom: 4px; }
+    .full-groups { background: #f9f9fc; padding: 12px; margin: 8px 0; border-radius: 6px; }
+    .feedback { font-weight: bold; font-size: 1.12em; margin: 12px 0; }
+    .btn { padding: 6px 18px; margin: 8px 4px 0 0; border: none; border-radius: 4px; background: #3282e6; color: #fff; cursor: pointer; font-size: 1.1em;}
+    .btn:disabled { background: #ccc; }
+    .correct { color: green; font-weight: bold;}
+    .wrong { color: red; font-weight: bold;}
+    .sim-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .sim-table th, .sim-table td { border: 1px solid #ccc; padding: 6px 3px; text-align: center; }
+    .sim-table th { background: #f2f6fa; }
+    .summary-row { font-size: 1.15em; }
+    .highlight { background: #f3fbaa; }
+    .nav-btn { background: #555; color: #fff; }
+    .back-btn { background: #888; color: #fff;}
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Coin combo hidden/display, centered -->
+  <div class="centered">
+    <button id="unhideBtn" class="unhide-btn btn">Unhide 🔍</button>
+    <div id="coinCombo" class="coin-combo" style="display:none;"></div>
+    <div class="dropdown">
+      <label for="comboDropdown">Select combination: </label>
+      <select id="comboDropdown"></select>
+    </div>
+  </div>
 
+  <div style="height: 20px;"></div>
+
+  <!-- Group Rules Table, centered -->
+  <div class="rules-header centered">Group Rules Table</div>
+  <table class="rules-table">
+    <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
+    <tr><td>1</td><td>0</td><td>0</td><td>A</td></tr>
+    <tr><td>2</td><td>0</td><td>1</td><td>B</td></tr>
+    <tr><td>3</td><td>1</td><td>0</td><td>C</td></tr>
+    <tr><td>4</td><td>1</td><td>1</td><td>D</td></tr>
+  </table>
+  <div class="centered" style="margin-bottom: 20px;">Rule: Wrong knight <b>flips</b> their actual coin value when submitting.</div>
+
+  <div id="mainFlow"></div>
+</div>
+
+<script>
+  // --- Data Setup ---
+  const knightNames = ['A','B','C','D'];
+  const groups = [
+    {id:1, A:0, B:0, wrong:'A'},
+    {id:2, A:0, B:1, wrong:'B'},
+    {id:3, A:1, B:0, wrong:'C'},
+    {id:4, A:1, B:1, wrong:'D'}
+  ];
+
+  // Generate all 16 combos
+  function numToCombo(n) {
+    let b = n.toString(2).padStart(4, '0').split('').map(Number);
+    return b;
+  }
+  const allCombos = [];
+  for(let i=0; i<16; ++i) allCombos.push(numToCombo(i));
+
+  // State
+  let currentComboIdx = 0;
+  let currentCombo = allCombos[currentComboIdx];
+  let currentKnight = 0;
+  let submissions = [null,null,null,null];
+  let selectedGroups = [];
+  let contradictionGroup = null;
+  let coinComboRevealed = false;
+
+  // Fill dropdown
+  function renderComboDropdown() {
+    let sel = document.getElementById('comboDropdown');
+    sel.innerHTML = '';
+    for(let i=0; i<16; ++i) {
+      let opt = document.createElement('option');
+      opt.value = i;
+      opt.text = allCombos[i].join('');
+      sel.appendChild(opt);
+    }
+    sel.value = currentComboIdx;
+    sel.onchange = function() {
+      currentComboIdx = parseInt(sel.value);
+      setCombo(currentComboIdx);
+    };
+  }
+
+  // Show/hide coin combo
+  document.getElementById('unhideBtn').onclick = function() {
+    coinComboRevealed = true;
+    document.getElementById('coinCombo').innerText = currentCombo.join('');
+    document.getElementById('coinCombo').style.display = '';
+    this.disabled = true;
+  };
+
+  function setCombo(idx) {
+    currentComboIdx = idx;
+    currentCombo = allCombos[currentComboIdx];
+    currentKnight = 0;
+    submissions = [null,null,null,null];
+    selectedGroups = [];
+    contradictionGroup = null;
+    coinComboRevealed = false;
+    document.getElementById('unhideBtn').disabled = false;
+    document.getElementById('coinCombo').style.display = 'none';
+    renderComboDropdown();
+    showKnightFlow(currentKnight);
+  }
+
+  function nextCombo() {
+    setCombo((currentComboIdx+1)%16);
+  }
+
+  // --- Logic: Step-by-step deduction ---
+
+  function showKnightFlow(knightIdx) {
+    let mainDiv = document.getElementById('mainFlow');
+    mainDiv.innerHTML = '';
+    // Next combo btn always visible
+    let nextComboBtn = document.createElement('button');
+    nextComboBtn.className = 'btn nav-btn';
+    nextComboBtn.style.float = 'right';
+    nextComboBtn.innerText = 'Next Combo ▶';
+    nextComboBtn.onclick = nextCombo;
+    mainDiv.appendChild(nextComboBtn);
+
+    // Knight's view (always present)
+    const others = [0,1,2,3].filter(x => x !== knightIdx);
+    const viewStr = others.map(j => currentCombo[j]).join('');
+    const viewLabels = others.map(j => `${knightNames[j]}=${currentCombo[j]}`).join(', ');
+    let knightViewDiv = document.createElement('div');
+    knightViewDiv.className = 'knight-view';
+    // Always show in format xxx (B=x, C=x, D=x) or (A=x, C=x, D=x), etc.
+    let viewFormat = '';
+    if (knightIdx === 0) viewFormat = `Knight A view: ${viewStr} (B=${currentCombo[1]}, C=${currentCombo[2]}, D=${currentCombo[3]})`;
+    if (knightIdx === 1) viewFormat = `Knight B view: ${viewStr} (A=${currentCombo[0]}, C=${currentCombo[2]}, D=${currentCombo[3]})`;
+    if (knightIdx === 2) viewFormat = `Knight C view: ${viewStr} (A=${currentCombo[0]}, B=${currentCombo[1]}, D=${currentCombo[3]})`;
+    if (knightIdx === 3) viewFormat = `Knight D view: ${viewStr} (A=${currentCombo[0]}, B=${currentCombo[1]}, C=${currentCombo[2]})`;
+    knightViewDiv.innerText = viewFormat;
+    mainDiv.appendChild(knightViewDiv);
+
+    // Which group do you belong to?
+    let questionDiv = document.createElement('div');
+    questionDiv.className = 'question';
+    questionDiv.innerText = 'Which group do you belong to?';
+    mainDiv.appendChild(questionDiv);
+
+    let choicesDiv = document.createElement('div');
+    choicesDiv.className = 'choices';
+    let visibleB = currentCombo[1];
+    let visibleA = currentCombo[0];
+    let groupPossibilities;
+    if (knightIdx === 0) { // A's view
+      groupPossibilities = groups.filter(g => g.B === visibleB);
+    } else if (knightIdx === 1) { // B's view
+      groupPossibilities = groups.filter(g => g.A === visibleA);
+    } else { // C or D, see both A and B
+      groupPossibilities = groups.filter(g => g.A === visibleA && g.B === visibleB);
+    }
+    // Multi-choice for A/B, single for C/D
+    groupPossibilities.forEach(g => {
+      let inp = document.createElement('input');
+      inp.type = (knightIdx < 2) ? 'checkbox' : 'radio';
+      inp.name = 'groupChoice';
+      inp.value = g.id;
+      inp.id = 'group_'+g.id;
+      let label = document.createElement('label');
+      label.htmlFor = inp.id;
+      label.innerText = `Group ${g.id} (A=${g.A}, B=${g.B})`;
+      choicesDiv.appendChild(inp);
+      choicesDiv.appendChild(label);
+    });
+    mainDiv.appendChild(choicesDiv);
+
+    // Next btn (first step)
+    let nextBtn = document.createElement('button');
+    nextBtn.className = 'btn';
+    nextBtn.innerText = 'Next >';
+    mainDiv.appendChild(nextBtn);
+
+    nextBtn.onclick = function() {
+      let selected = [];
+      document.getElementsByName('groupChoice').forEach(el => {
+        if (el.checked) selected.push(parseInt(el.value));
+      });
+      if (selected.length === 0) {
+        alert('Select at least one group.');
+        return;
+      }
+      selectedGroups = selected;
+      if (selectedGroups.length > 1 && knightIdx < 2) {
+        showContradictionCheck(knightIdx, selectedGroups);
+      } else {
+        let group = groups.find(g => g.id === selectedGroups[0]);
+        showSubmitStep(knightIdx, group);
+      }
+    };
+
+    // Nav to simulation page
+    let simBtn = document.createElement('button');
+    simBtn.className = 'btn nav-btn';
+    simBtn.style.float = 'left';
+    simBtn.innerText = 'Simulation Page';
+    simBtn.onclick = showSimulationPage;
+    mainDiv.appendChild(simBtn);
+    mainDiv.appendChild(document.createElement('div'));
+  }
+
+  function showContradictionCheck(knightIdx, groupIds) {
+    let mainDiv = document.getElementById('mainFlow');
+    mainDiv.innerHTML = '';
+    let nextComboBtn = document.createElement('button');
+    nextComboBtn.className = 'btn nav-btn';
+    nextComboBtn.style.float = 'right';
+    nextComboBtn.innerText = 'Next Combo ▶';
+    nextComboBtn.onclick = nextCombo;
+    mainDiv.appendChild(nextComboBtn);
+
+    const others = [0,1,2,3].filter(x => x !== knightIdx);
+    const viewStr = others.map(j => currentCombo[j]).join('');
+    const viewLabels = others.map(j => `${knightNames[j]}=${currentCombo[j]}`).join(', ');
+    let knightViewDiv = document.createElement('div');
+    knightViewDiv.className = 'knight-view';
+    if (knightIdx === 0) knightViewDiv.innerText = `Knight A view: ${viewStr} (B=${currentCombo[1]}, C=${currentCombo[2]}, D=${currentCombo[3]})`;
+    if (knightIdx === 1) knightViewDiv.innerText = `Knight B view: ${viewStr} (A=${currentCombo[0]}, C=${currentCombo[2]}, D=${currentCombo[3]})`;
+    mainDiv.appendChild(knightViewDiv);
+
+    // Full coin combos for your selection
+    let combosDiv = document.createElement('div');
+    combosDiv.className = 'full-groups';
+    combosDiv.innerHTML = '<b>Full coin combos for your selection:</b><br>';
+    groupIds.forEach(id => {
+      let g = groups.find(x => x.id === id);
+      let combo;
+      if (knightIdx === 0) combo = [g.A, g.B, currentCombo[2], currentCombo[3]];
+      else combo = [currentCombo[0], g.B, currentCombo[2], currentCombo[3]];
+      combosDiv.innerHTML += `Group ${g.id}: ${combo.join('')} (A=${combo[0]}, B=${combo[1]}, C=${combo[2]}, D=${combo[3]})<br>`;
+    });
+    mainDiv.appendChild(combosDiv);
+
+    let cQDiv = document.createElement('div');
+    cQDiv.className = 'question';
+    cQDiv.innerText = 'Look at the rules table. Which one does NOT contradict?';
+    mainDiv.appendChild(cQDiv);
+
+    let choicesDiv = document.createElement('div');
+    choicesDiv.className = 'choices';
+    groupIds.forEach(id => {
+      let g = groups.find(x => x.id === id);
+      let ruleText = '';
+      if (g.wrong === 'A') ruleText = 'A flips coin: A=' + (1 - currentCombo[0]);
+      if (g.wrong === 'B') ruleText = 'B flips coin: B=' + (1 - currentCombo[1]);
+      if (g.wrong === 'C') ruleText = 'C flips coin: C=' + (1 - currentCombo[2]);
+      if (g.wrong === 'D') ruleText = 'D flips coin: D=' + (1 - currentCombo[3]);
+      let inp = document.createElement('input');
+      inp.type = 'radio';
+      inp.name = 'contradictChoice';
+      inp.value = g.id;
+      inp.id = 'contradict_'+g.id;
+      let label = document.createElement('label');
+      label.htmlFor = inp.id;
+      label.innerText = `Group ${g.id} (rule: ${ruleText})`;
+      choicesDiv.appendChild(inp);
+      choicesDiv.appendChild(label);
+    });
+    mainDiv.appendChild(choicesDiv);
+
+    let nextBtn = document.createElement('button');
+    nextBtn.className = 'btn';
+    nextBtn.innerText = 'Next >';
+    mainDiv.appendChild(nextBtn);
+
+    nextBtn.onclick = function() {
+      let sel = Array.from(document.getElementsByName('contradictChoice')).find(el=>el.checked);
+      if (!sel) {
+        alert('Select a group.');
+        return;
+      }
+      let group = groups.find(g => g.id === parseInt(sel.value));
+      contradictionGroup = group;
+      showSubmitStep(knightIdx, group);
+    };
+
+    let simBtn = document.createElement('button');
+    simBtn.className = 'btn nav-btn';
+    simBtn.style.float = 'left';
+    simBtn.innerText = 'Simulation Page';
+    simBtn.onclick = showSimulationPage;
+    mainDiv.appendChild(simBtn);
+    mainDiv.appendChild(document.createElement('div'));
+  }
+
+  function showSubmitStep(knightIdx, group) {
+    let mainDiv = document.getElementById('mainFlow');
+    mainDiv.innerHTML = '';
+    let nextComboBtn = document.createElement('button');
+    nextComboBtn.className = 'btn nav-btn';
+    nextComboBtn.style.float = 'right';
+    nextComboBtn.innerText = 'Next Combo ▶';
+    nextComboBtn.onclick = nextCombo;
+    mainDiv.appendChild(nextComboBtn);
+
+    const others = [0,1,2,3].filter(x => x !== knightIdx);
+    const viewStr = others.map(j => currentCombo[j]).join('');
+    if (knightIdx === 0) mainDiv.innerHTML += `<div class="knight-view">Knight A view: ${viewStr} (B=${currentCombo[1]}, C=${currentCombo[2]}, D=${currentCombo[3]})</div>`;
+    if (knightIdx === 1) mainDiv.innerHTML += `<div class="knight-view">Knight B view: ${viewStr} (A=${currentCombo[0]}, C=${currentCombo[2]}, D=${currentCombo[3]})</div>`;
+    if (knightIdx === 2) mainDiv.innerHTML += `<div class="knight-view">Knight C view: ${viewStr} (A=${currentCombo[0]},
