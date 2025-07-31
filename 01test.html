@@ -1,1 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Strategy Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; background: #f6f8fa; margin:0;}
+    .container { max-width: 650px; margin: 30px auto 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #aaa; padding: 18px 5vw 28px 5vw; }
+    .centered { text-align: center; }
+    .coin-combo { font-size: 2.2em; font-weight: bold; margin: 6px 0 24px 0; letter-spacing: 10px; }
+    .btn { padding: 8px 20px; margin: 10px 6px 0 0; border: none; border-radius: 4px; background: #3282e6; color: #fff; cursor: pointer; font-size: 1.1em;}
+    .btn:disabled { background: #bbb; }
+    .btn-block { display: block; width: 100%; margin: 12px 0; }
+    .input-field { width: 30px; font-size: 1.2em; text-align: center; margin: 0 5px; }
+    .feedback { font-weight: bold; font-size: 1.2em; margin-top: 15px; }
+    .correct { color: green; }
+    .wrong { color: red; }
+    .scoreboard { font-size: 1.1em; margin-top: 20px; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="container centered">
+    <h2>Strategy Test</h2>
+    <p>Enter your guesses for the 4 coins (0 or 1):</p>
+    <div>
+      <input type="text" maxlength="1" class="input-field" id="guess0">
+      <input type="text" maxlength="1" class="input-field" id="guess1">
+      <input type="text" maxlength="1" class="input-field" id="guess2">
+      <input type="text" maxlength="1" class="input-field" id="guess3">
+    </div>
+    <button class="btn btn-block" onclick="submitGuesses()">Submit</button>
+    <button class="btn btn-block" onclick="nextCombo()">Next Knight ></button>
+    <div id="feedback" class="feedback"></div>
+    <div id="scoreboard" class="scoreboard"></div>
+  </div>
 
+  <script>
+    const combos = [];
+    for (let i = 0; i < 16; ++i) {
+      combos.push([(i>>3)&1, (i>>2)&1, (i>>1)&1, i&1]);
+    }
+    let comboIdx = 0;
+    let score = { correct: 0, total: 0 };
+
+    function updateScoreboard() {
+      const sb = document.getElementById('scoreboard');
+      sb.innerText = `Score: ${score.correct} out of ${score.total} combinations correct`;
+    }
+
+    function submitGuesses() {
+      const current = combos[comboIdx];
+      const feedbackDiv = document.getElementById('feedback');
+      let correctCount = 0;
+      let wrongCount = 0;
+      for (let i = 0; i < 4; i++) {
+        const val = document.getElementById(`guess${i}`).value;
+        if (val !== '0' && val !== '1') {
+          feedbackDiv.innerHTML = '<span class="wrong">Please enter only 0 or 1 for all fields.</span>';
+          return;
+        }
+        if (parseInt(val) === current[i]) correctCount++;
+        else wrongCount++;
+      }
+      score.total++;
+      if (correctCount === 3 && wrongCount === 1) {
+        feedbackDiv.innerHTML = '<span class="correct">Correct</span>';
+        score.correct++;
+      } else {
+        feedbackDiv.innerHTML = '<span class="wrong">Wrong</span>';
+      }
+      updateScoreboard();
+    }
+
+    function nextCombo() {
+      comboIdx = (comboIdx + 1) % combos.length;
+      document.getElementById('feedback').innerText = '';
+      for (let i = 0; i < 4; i++) {
+        document.getElementById(`guess${i}`).value = '';
+      }
+    }
+
+    updateScoreboard();
+  </script>
+</body>
+</html>
