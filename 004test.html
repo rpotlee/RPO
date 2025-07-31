@@ -1,1 +1,155 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Strategy Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: #3282e6;
+      --bg: #f6f8fa;
+      --accent: #fff;
+      --shadow: 0 2px 8px #aaa;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+    .container {
+      max-width: 650px;
+      margin: 20px auto;
+      background: var(--accent);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+    .centered { text-align: center; }
+    .coin-combo {
+      font-size: 2em;
+      font-weight: 700;
+      letter-spacing: 12px;
+      margin: 10px 0;
+      display: none;
+    }
+    .btn {
+      padding: 10px 16px;
+      margin: 10px 6px;
+      border: none;
+      border-radius: 6px;
+      background: var(--primary);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover { background: #1d65c1; }
+    .rules-header {
+      font-size: 1.4em;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .rules-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+    }
+    .rules-table th, .rules-table td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    .question {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+    .choices label {
+      display: block;
+      padding: 6px;
+      margin: 4px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f2f2f2;
+      cursor: pointer;
+    }
+    .choices input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .italic {
+      font-style: italic;
+      color: #555;
+      font-size: 0.95em;
+      margin-top: 10px;
+    }
+    .feedback, .scoreboard, .knight-view {
+      margin-top: 16px;
+      font-weight: bold;
+      font-size: 1.1em;
+      text-align: center;
+    }
+    .group-list {
+      background: #f9f9fc;
+      padding: 14px;
+      margin-top: 24px;
+      border-radius: 6px;
+    }
+    .group-list h3 {
+      margin: 10px 0 5px;
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+    .group-list ul {
+      padding-left: 16px;
+    }
+    .group-list li {
+      margin: 3px 0;
+    }
+    @media (max-width: 600px) {
+      .container {
+        margin: 10px;
+        padding: 14px;
+      }
+      .coin-combo {
+        font-size: 1.5em;
+        letter-spacing: 8px;
+      }
+      .btn {
+        font-size: 0.95em;
+        width: 100%;
+        margin: 8px 0;
+      }
+      .rules-table th, .rules-table td {
+        font-size: 0.9em;
+        padding: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="centered">
+      <button onclick="toggleCombo()" class="btn">Unhide</button>
+      <div id="coinCombo" class="coin-combo"></div>
+    </div>
+    <div class="rules-header">Group Rules Table</div>
+    <table class="rules-table">
+      <thead>
+        <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
+      </thead>
+      <tbody id="rulesTableBody"></tbody>
+    </table>
+    <div id="main"></div>
+    <div id="feedback" class="feedback"></div>
+    <div id="scoreboard" class="scoreboard"></div>
+    <div class="group-list">
+      <h3>Group (0, 0) → Wrong: A</h3>
+      <ul><li>(0, 0, 0, 0)</li><li>(0, 0, 0, 1)</li><li>(0, 0, 1, 0)</li><li>(0, 0, 1, 1)</li></ul>
+      <h3>Group (0, 1) → Wrong: B</h3>
+      <ul><li>(0, 1, 0, 0)</li><li>(0, 1, 0, 1)</li><li>(0, 1, 1, 0)</li><li>(0, 1, 1, 1)</li></ul>
+      <h3>Group (1, 0) → Wrong: C</h3>
+      <ul><li>(1, 0, 0, 0)</li><li>(1, 0, 0, 1)</li><li>(1, 0, 1, 0)</li><li>(1, 0, 1, 1)</li></ul>
+      <h3>Group (1, 1) → Wrong: D</h3>
+      <ul><li>(1, 1, 0, 0)</li><li>(1, 1, 0, 1)</li><li>(1, 1, 1, 0)</li><li>(1, 1, 1, 1)</li></ul>
+    </div>
+  </div>
+</body>
+</html>
