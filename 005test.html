@@ -1,1 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Strategy Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 720px;
+      margin: 10px auto;
+      padding: 10px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .centered { text-align: center; }
+    .coin-combo {
+      font-size: 2.2em;
+      font-weight: 700;
+      letter-spacing: 10px;
+      margin-top: 6px;
+      display: none;
+    }
+    .btn {
+      padding: 8px 14px;
+      margin: 6px 4px;
+      border: none;
+      border-radius: 6px;
+      background: #3282e6;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #256ad3;
+    }
+    .rules-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+    .rules-table th, .rules-table td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+    }
+    .rules-header {
+      font-size: 1.2em;
+      font-weight: 600;
+      text-align: center;
+    }
+    .knight-view, .feedback, .scoreboard {
+      font-size: 1em;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .correct { color: green; }
+    .wrong { color: red; }
+    .group-list h3 {
+      margin-top: 12px;
+    }
+    .group-list ul {
+      padding-left: 18px;
+    }
+    .question {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .choices label {
+      display: block;
+      margin: 4px 0;
+    }
+    .result-breakdown {
+      text-align: center;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+    .combo-output {
+      background: #f9f9fc;
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font-size: 0.9em;
+    }
+    .bugfix-flag { display: none; }
+    @media (max-width: 640px) {
+      .coin-combo { font-size: 1.6em; letter-spacing: 6px; }
+      .btn { width: 100%; margin: 6px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card centered">
+      <button id="toggleComboBtn" class="btn">Unhide</button>
+      <div id="coinCombo" class="coin-combo"></div>
+    </div>
 
+    <div class="card">
+      <div class="rules-header">Group Rules Table</div>
+      <table class="rules-table">
+        <thead>
+          <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>0</td><td>0</td><td>A</td></tr>
+          <tr><td>2</td><td>0</td><td>1</td><td>B</td></tr>
+          <tr><td>3</td><td>1</td><td>0</td><td>C</td></tr>
+          <tr><td>4</td><td>1</td><td>1</td><td>D</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" id="main">
+      <div class="knight-view" id="knightView">Knight A view: ???</div>
+      <div class="question">Which group do you belong?</div>
+      <div class="choices" id="groupChoices"></div>
+      <div class="combo-output">
+        <div id="comboList"><b>Full coin combos for your selection:</b><br></div>
+      </div>
+      <div class="centered">
+        <button id="guess0Btn" class="btn">0</button>
+        <button id="guess1Btn" class="btn">1</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="feedback" class="feedback"></div>
+      <div id="scoreboard" class="scoreboard"></div>
+      <div class="centered">
+        <button id="tryAgainBtn" class="btn">Try Again</button>
+        <button id="nextComboBtn" class="btn">Next Combo</button>
+        <button id="resetScoreBtn" class="btn">Reset Score</button>
+      </div>
+      <div id="breakdown" class="result-breakdown"></div>
+    </div>
+
+    <div class="card group-list">
+      <h3>Group (0, 0) → Wrong: A</h3>
+      <ul><li>(0, 0, 0, 0)</li><li>(0, 0, 0, 1)</li><li>(0, 0, 1, 0)</li><li>(0, 0, 1, 1)</li></ul>
+      <h3>Group (0, 1) → Wrong: B</h3>
+      <ul><li>(0, 1, 0, 0)</li><li>(0, 1, 0, 1)</li><li>(0, 1, 1, 0)</li><li>(0, 1, 1, 1)</li></ul>
+      <h3>Group (1, 0) → Wrong: C</h3>
+      <ul><li>(1, 0, 0, 0)</li><li>(1, 0, 0, 1)</li><li>(1, 0, 1, 0)</li><li>(1, 0, 1, 1)</li></ul>
+      <h3>Group (1, 1) → Wrong: D</h3>
+      <ul><li>(1, 1, 0, 0)</li><li>(1, 1, 0, 1)</li><li>(1, 1, 1, 0)</li><li>(1, 1, 1, 1)</li></ul>
+    </div>
+    <span class="bugfix-flag"></span>
+  </div>
+</body>
+</html>
