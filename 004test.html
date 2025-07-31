@@ -6,119 +6,131 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
-      --primary: #3282e6;
-      --bg: #f6f8fa;
-      --accent: #fff;
-      --shadow: 0 2px 8px #aaa;
+      --primary: #2c73d2;
+      --accent-bg: #ffffff;
+      --background: #f2f4f8;
+      --shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background);
+      color: #333;
+    }
     .container {
-      max-width: 650px;
+      max-width: 700px;
       margin: 20px auto;
-      background: var(--accent);
+      background: var(--accent-bg);
       border-radius: 10px;
       box-shadow: var(--shadow);
       padding: 20px;
     }
-    .centered { text-align: center; }
-    .coin-combo {
-      font-size: 2em;
-      font-weight: 700;
-      letter-spacing: 12px;
-      margin: 10px 0;
-      display: none;
+    .centered {
+      text-align: center;
+    }
+    .button-bar {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .btn {
-      padding: 10px 16px;
-      margin: 10px 6px;
+      background: var(--primary);
+      color: #fff;
       border: none;
       border-radius: 6px;
-      background: var(--primary);
-      color: white;
+      padding: 10px 18px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: 0.3s ease;
     }
-    .btn:hover { background: #1d65c1; }
+    .btn:hover {
+      background: #1f5eb5;
+    }
+    .coin-combo {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.5rem;
+      display: none;
+      margin: 12px 0;
+    }
     .rules-header {
-      font-size: 1.4em;
-      font-weight: bold;
       text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
       margin-top: 20px;
+    }
+    .rules-table-wrapper {
+      overflow-x: auto;
     }
     .rules-table {
       width: 100%;
       border-collapse: collapse;
-      margin: 12px 0 18px;
+      margin-top: 10px;
     }
-    .rules-table th, .rules-table td {
-      padding: 10px;
+    .rules-table th,
+    .rules-table td {
       border: 1px solid #ddd;
+      padding: 10px;
       text-align: center;
+    }
+    .feedback, .scoreboard, .knight-view {
+      margin-top: 20px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.1rem;
     }
     .question {
       margin-top: 20px;
       font-weight: bold;
-      font-size: 1.1em;
+    }
+    .choices {
+      margin: 10px auto;
+      padding-left: 15px;
+      max-width: 300px;
     }
     .choices label {
       display: block;
       padding: 6px;
-      margin: 4px 0;
       border: 1px solid #ccc;
       border-radius: 4px;
-      background: #f2f2f2;
-      cursor: pointer;
-    }
-    .choices input[type="checkbox"] {
-      margin-right: 8px;
-    }
-    .italic {
-      font-style: italic;
-      color: #555;
-      font-size: 0.95em;
-      margin-top: 10px;
-    }
-    .feedback, .scoreboard, .knight-view {
-      margin-top: 16px;
-      font-weight: bold;
-      font-size: 1.1em;
-      text-align: center;
+      margin-bottom: 6px;
+      background: #f5f7fa;
     }
     .group-list {
       background: #f9f9fc;
-      padding: 14px;
-      margin-top: 24px;
       border-radius: 6px;
+      padding: 14px;
+      margin-top: 20px;
     }
     .group-list h3 {
-      margin: 10px 0 5px;
-      font-size: 1.1em;
-      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
     }
     .group-list ul {
-      padding-left: 16px;
-    }
-    .group-list li {
-      margin: 3px 0;
+      list-style-type: disc;
+      padding-left: 20px;
+      margin-bottom: 16px;
     }
     @media (max-width: 600px) {
       .container {
         margin: 10px;
-        padding: 14px;
-      }
-      .coin-combo {
-        font-size: 1.5em;
-        letter-spacing: 8px;
+        padding: 16px;
       }
       .btn {
-        font-size: 0.95em;
         width: 100%;
-        margin: 8px 0;
+        padding: 12px 10px;
+        font-size: 1rem;
       }
-      .rules-table th, .rules-table td {
-        font-size: 0.9em;
+      .coin-combo {
+        font-size: 1.6rem;
+        letter-spacing: 0.3rem;
+      }
+      .rules-table th,
+      .rules-table td {
+        font-size: 0.9rem;
         padding: 6px;
       }
     }
@@ -127,19 +139,26 @@
 <body>
   <div class="container">
     <div class="centered">
-      <button onclick="toggleCombo()" class="btn">Unhide</button>
+      <div class="button-bar">
+        <button onclick="toggleCombo()" class="btn" id="comboToggle">Unhide</button>
+      </div>
       <div id="coinCombo" class="coin-combo"></div>
     </div>
+
     <div class="rules-header">Group Rules Table</div>
-    <table class="rules-table">
-      <thead>
-        <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
-      </thead>
-      <tbody id="rulesTableBody"></tbody>
-    </table>
+    <div class="rules-table-wrapper">
+      <table class="rules-table">
+        <thead>
+          <tr><th>Group</th><th>A</th><th>B</th><th>Wrong Knight</th></tr>
+        </thead>
+        <tbody id="rulesTableBody"></tbody>
+      </table>
+    </div>
+
     <div id="main"></div>
     <div id="feedback" class="feedback"></div>
     <div id="scoreboard" class="scoreboard"></div>
+
     <div class="group-list">
       <h3>Group (0, 0) → Wrong: A</h3>
       <ul><li>(0, 0, 0, 0)</li><li>(0, 0, 0, 1)</li><li>(0, 0, 1, 0)</li><li>(0, 0, 1, 1)</li></ul>
@@ -151,5 +170,37 @@
       <ul><li>(1, 1, 0, 0)</li><li>(1, 1, 0, 1)</li><li>(1, 1, 1, 0)</li><li>(1, 1, 1, 1)</li></ul>
     </div>
   </div>
+
+  <script>
+    const combos = Array.from({length: 16}, (_, i) => [(i>>3)&1, (i>>2)&1, (i>>1)&1, i&1]);
+    const coinComboDiv = document.getElementById('coinCombo');
+    const comboToggleBtn = document.getElementById('comboToggle');
+    let comboIdx = 0;
+
+    function toggleCombo() {
+      const visible = coinComboDiv.style.display !== 'none';
+      coinComboDiv.style.display = visible ? 'none' : 'block';
+      comboToggleBtn.innerText = visible ? 'Unhide' : 'Hide';
+      coinComboDiv.innerText = combos[comboIdx].join('');
+    }
+
+    const groups = [
+      {id:1, A:0, B:0, wrong:'A'},
+      {id:2, A:0, B:1, wrong:'B'},
+      {id:3, A:1, B:0, wrong:'C'},
+      {id:4, A:1, B:1, wrong:'D'}
+    ];
+
+    function renderRulesTable() {
+      const body = document.getElementById('rulesTableBody');
+      groups.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${g.id}</td><td>${g.A}</td><td>${g.B}</td><td>${g.wrong}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    renderRulesTable();
+  </script>
 </body>
 </html>
