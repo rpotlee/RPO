@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>Bit Combo Tool</title>
   <style>
     html, body {
@@ -11,7 +11,10 @@
       overflow: hidden;
       font-family: sans-serif;
       height: 100%;
-      background-color: #f5f5f5;
+      background-color: #f0f0f0;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
     }
 
     #container {
@@ -20,53 +23,62 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      position: relative;
+      overflow: hidden;
       padding: 10px;
       box-sizing: border-box;
+      position: relative;
+      z-index: 1;
     }
 
     .combo {
       display: flex;
-      border: 1px solid #aaa;
-      margin: 5px;
-      padding: 5px;
-      cursor: move;
-      background-color: #eee;
-      user-select: none;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      margin: 6px;
+      padding: 8px;
+      cursor: grab;
+      transition: transform 0.2s;
     }
 
     .bit {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
       margin: 2px;
-      padding: 5px 10px;
-      background-color: white;
-      border: 1px solid #666;
-      cursor: grab;
+      font-size: 16px;
+      width: 28px;
+      height: 28px;
       text-align: center;
+      line-height: 28px;
       position: relative;
+      cursor: grab;
+      transition: background-color 0.2s;
     }
 
     .bit-label {
       font-size: 10px;
-      color: #333;
-      display: block;
+      color: #444;
       position: absolute;
-      top: -12px;
-      left: 0;
-      right: 0;
-      text-align: center;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     .partition {
-      border-left: 3px solid black;
-      margin-left: 5px;
-      padding-left: 5px;
+      border-left: 3px solid black !important;
+      margin-left: 6px !important;
+      padding-left: 6px !important;
     }
 
     #overlay {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
-      z-index: 10;
+      width: 100vw;
+      height: 100vh;
+      z-index: 5;
       pointer-events: none;
     }
 
@@ -74,18 +86,24 @@
       position: absolute;
       bottom: 10px;
       left: 10px;
-      z-index: 20;
-      background: rgba(255,255,255,0.9);
-      padding: 5px;
-      border-radius: 5px;
+      z-index: 10;
+      background: rgba(255,255,255,0.95);
+      padding: 6px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     input[type="color"] {
-      margin: 0 5px;
+      width: 32px;
+      height: 32px;
+      border: none;
     }
 
     button {
-      margin-right: 10px;
+      padding: 6px 10px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -95,9 +113,9 @@
 <canvas id="overlay"></canvas>
 
 <div id="controls">
-  <button onclick="toggleDraw()">Toggle Draw</button>
-  Bit: <input type="color" id="bitColor" />
-  Combo: <input type="color" id="comboColor" />
+  <button onclick="toggleDraw()">Draw</button>
+  <label>Bit <input type="color" id="bitColor" /></label>
+  <label>Combo <input type="color" id="comboColor" /></label>
 </div>
 
 <script>
@@ -109,131 +127,95 @@
   ];
 
   const container = document.getElementById('container');
-  const partitions = {}; // comboIndex -> bit index for partition
+  const partitions = {};
+
+  let touchStartTime = 0;
 
   function renderCombo(combo, index) {
     const comboDiv = document.createElement('div');
     comboDiv.className = 'combo';
-    comboDiv.draggable = true;
     comboDiv.dataset.index = index;
+    comboDiv.setAttribute('draggable', 'true');
+
+    comboDiv.addEventListener('touchstart', (e) => {
+      touchStartTime = Date.now();
+    });
+
+    comboDiv.addEventListener('touchend', (e) => {
+      if (Date.now() - touchStartTime < 200) {
+        const color = document.getElementById('comboColor').value;
+        comboDiv.style.backgroundColor = color;
+      }
+    });
 
     combo.forEach((bit, bitIndex) => {
       const bitDiv = document.createElement('div');
       bitDiv.className = 'bit';
       bitDiv.textContent = bit;
+      bitDiv.setAttribute('draggable', 'true');
 
-      const label = document.createElement('span');
+      const label = document.createElement('div');
       label.className = 'bit-label';
-      label.textContent = String.fromCharCode(97 + bitIndex); // a, b, c, d
+      label.textContent = String.fromCharCode(97 + bitIndex);
       bitDiv.appendChild(label);
 
       if (partitions[index] !== undefined && bitIndex === partitions[index]) {
         bitDiv.classList.add('partition');
       }
 
-      // Bit-level drag setup
-      bitDiv.draggable = true;
-      bitDiv.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('bit-index', bitIndex);
-        e.dataTransfer.setData('combo-index', index);
+      bitDiv.addEventListener('touchstart', (e) => {
+        touchStartTime = Date.now();
       });
 
-      bitDiv.addEventListener('dragover', (e) => e.preventDefault());
-
-      bitDiv.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const fromBit = +e.dataTransfer.getData('bit-index');
-        const comboIdx = +e.dataTransfer.getData('combo-index');
-        if (comboIdx !== index) return;
-
-        const bits = Array.from(comboDiv.querySelectorAll('.bit'));
-        const temp = bits[fromBit].textContent;
-        bits[fromBit].textContent = bits[bitIndex].textContent;
-        bits[bitIndex].textContent = temp;
-      });
-
-      // Tap/hold (or right-click) to set partition
-      bitDiv.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        partitions[index] = bitIndex;
-        rerenderAll();
-      });
-
-      bitDiv.addEventListener('click', () => {
-        const color = document.getElementById('bitColor').value;
-        bitDiv.style.backgroundColor = color;
+      bitDiv.addEventListener('touchend', (e) => {
+        if (Date.now() - touchStartTime > 500) {
+          partitions[index] = bitIndex;
+          rerenderAll();
+        } else {
+          const color = document.getElementById('bitColor').value;
+          bitDiv.style.backgroundColor = color;
+          bitDiv.style.color = '#000';
+        }
       });
 
       comboDiv.appendChild(bitDiv);
     });
 
-    // Combo drag
-    comboDiv.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('combo-html', comboDiv.outerHTML);
-      comboDiv.classList.add('dragging');
-      setTimeout(() => comboDiv.style.display = 'none', 0);
-    });
-
-    comboDiv.addEventListener('dragend', () => {
-      document.querySelectorAll('.combo').forEach(c => {
-        c.style.display = '';
-        c.classList.remove('dragging');
-      });
-    });
-
-    comboDiv.addEventListener('dragover', (e) => e.preventDefault());
-
-    comboDiv.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const html = e.dataTransfer.getData('combo-html');
-      const temp = document.createElement('div');
-      temp.innerHTML = html;
-      const dragged = temp.firstChild;
-      container.insertBefore(dragged, comboDiv);
-    });
-
-    comboDiv.addEventListener('dblclick', () => {
-      const color = document.getElementById('comboColor').value;
-      comboDiv.style.backgroundColor = color;
-    });
-
-    return comboDiv;
+    container.appendChild(comboDiv);
   }
 
   function rerenderAll() {
     container.innerHTML = '';
-    combinations.forEach((combo, i) => {
-      const el = renderCombo(combo, i);
-      container.appendChild(el);
-    });
+    combinations.forEach((combo, i) => renderCombo(combo, i));
   }
 
   rerenderAll();
 
-  // Drawing Overlay Setup
+  // Canvas
   const canvas = document.getElementById('overlay');
   const ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-
   let drawing = false;
   let drawEnabled = false;
 
-  canvas.addEventListener('mousedown', (e) => {
+  canvas.addEventListener('touchstart', (e) => {
     if (!drawEnabled) return;
     drawing = true;
+    const touch = e.touches[0];
     ctx.beginPath();
-    ctx.moveTo(e.clientX, e.clientY);
+    ctx.moveTo(touch.clientX, touch.clientY);
   });
 
-  canvas.addEventListener('mousemove', (e) => {
+  canvas.addEventListener('touchmove', (e) => {
     if (!drawing || !drawEnabled) return;
-    ctx.lineTo(e.clientX, e.clientY);
+    const touch = e.touches[0];
+    ctx.lineTo(touch.clientX, touch.clientY);
     ctx.stroke();
   });
 
-  canvas.addEventListener('mouseup', () => drawing = false);
-  canvas.addEventListener('mouseleave', () => drawing = false);
+  canvas.addEventListener('touchend', () => drawing = false);
+  canvas.addEventListener('touchcancel', () => drawing = false);
 
   function toggleDraw() {
     drawEnabled = !drawEnabled;
