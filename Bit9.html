@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>Binary Combinations</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+```
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  height: 100vh;
+  overflow: hidden;
+  color: #333;
+  padding: 5px;
+}
+
+.container {
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.btn {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.7rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  text-align: center;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.secondary {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+}
+
+.combinations-container {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 2px;
+  min-height: 0;
+}
+
+.combination-group {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border: 2px dashed transparent;
+  position: relative;
+  transition: 0.3s;
+  display: flex;
+  flex-direction: column;
+}
+
+.combination-group.drag-over {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.combination-group h3 {
+  text-align: center;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.combination {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 6px;
+  padding: 6px;
+  margin-bottom: 4px;
+  cursor: grab;
+  border: 2px solid transparent;
+  transition: 0.3s;
+}
+
+.combination.dragging {
+  opacity: 0.6;
+  transform: scale(1.03);
+}
+
+.combination.highlighted {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.bits-container {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  align-items: center;
+}
+
+.bit {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #dee2e6;
+  color: #333;
+  border: 1px solid transparent;
+  transition: 0.3s;
+}
+
+.bit.selected {
+  background: #ff6b6b;
+  color: white;
+}
+
+.status {
+  text-align: center;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: #666;
+  flex-shrink: 0;
+  padding: 2px;
+  min-height: 16px;
+}
+
+/* Mobile scrollbar styling */
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 3px;
+}
+```
+
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1 class="title">Binary Combinations</h1>
+    <div class="controls">
+      <button class="btn" onclick="addNewGroup()">+ Group</button>
+      <button class="btn secondary" onclick="partitionSelected()">📊 Partition</button>
+      <button class="btn" onclick="undoLastAction()">↶ Undo</button>
+      <button class="btn secondary" onclick="clearHighlights()">Clear</button>
+      <button class="btn danger" onclick="resetAll()">🗑 Reset</button>
+      <button class="btn" onclick="toggleInstructions()">❓ Help</button>
+    </div>
+  </div>
+
+  <div class="combinations-container" id="combinationsContainer"></div>
+
+  <div class="status" id="status">
+    Tap bits to select (red) • Drag combinations into groups
+  </div>
+</div>
+
+<script>
+const initial3BitCombinations = Array.from({ length: 16 }, (_, i) =>
+  i.toString(2).padStart(4, "0").split("").map(Number).slice(0, 3)
+);
+
+const initial4BitCombinations = Array.from({ length: 16 }, (_, i) =>
+  i.toString(2).padStart(4, "0").split("").map(Number)
+);
+
+let combinations = [];
+let actionHistory = [];
+let highlightedElements = new Set();
+let selectedBits = new Set();
+let draggedElement = null;
+let groupCounter = 5;
+let groups = ['group1', 'group2', 'group3', 'ungrouped', 'all4bit'];
+
+function init() {
+  combinations = [
+    ...initial3BitCombinations.map((bits, id) => ({ id, bits, group: 'ungrouped' })),
+    ...initial4BitCombinations.map((bits, id) => ({ id: id + 16, bits, group: 'all4bit' }))
+  ];
+  renderCombinations();
+}
+
+function saveState(action) {
+  actionHistory.push({
+    action,
+    combinations: JSON.parse(JSON.stringify(combinations)),
+    highlighted: new Set(highlightedElements),
+    selectedBits: new Set(selectedBits),
+    groups: [...groups]
+  });
+  if (actionHistory.length > 20) actionHistory.shift();
+}
+
+function renderCombinations() {
+  const container = document.getElementById("combinationsContainer");
+  container.innerHTML = '';
+  
+  groups.forEach(groupId => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'combination-group';
+    groupDiv.id = groupId;
+    
+    const header = document.createElement('h3');
+    header.textContent = groupId === 'ungrouped' ? 'All 3 bit' : 
+                        groupId === 'all4bit' ? 'All 4 bit' : 
+                        groupId.replace('_', ' ');
+    groupDiv.appendChild(header);
+    
+    const content = document.createElement('div');
+    content.className = 'group-content';
+    groupDiv.appendChild(content);
+    
+    setupDropZone(groupDiv);
+    container.appendChild(groupDiv);
+  });
+
+  combinations.forEach(combo => {
+    const div = document.createElement("div");
+    div.className = "combination";
+    div.dataset.id = combo.id;
+    div.draggable = true;
+
+    const bitsContainer = document.createElement("div");
+    bitsContainer.className = "bits-container";
+
+    combo.bits.forEach((bit, index) => {
+      const bitDiv = document.createElement("div");
+      bitDiv.className = "bit";
+      bitDiv.textContent = bit;
+      bitDiv.dataset.comboId = combo.id;
+      bitDiv.dataset.bitIndex = index;
+
+      bitDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleBitSelection(bitDiv);
+      });
+
+      bitsContainer.appendChild(bitDiv);
+    });
+
+    div.appendChild(bitsContainer);
+    div.addEventListener("click", () => toggleCombinationHighlight(div));
+    div.addEventListener("dragstart", handleDragStart);
+    div.addEventListener("dragend", handleDragEnd);
+
+    const groupEl = document.getElementById(combo.group);
+    if (groupEl) {
+      const content = groupEl.querySelector('.group-content');
+      content.appendChild(div);
+    }
+  });
+
+  restoreVisualStates();
+}
+
+function handleDragStart(e) {
+  draggedElement = e.target;
+  e.dataTransfer.setData('text/plain', e.target.dataset.id);
+  e.target.classList.add("dragging");
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove("dragging");
+  draggedElement = null;
+}
+
+function setupDropZone(zone) {
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add("drag-over");
+  });
+
+  zone.addEventListener('dragleave', e => {
+    zone.classList.remove("drag-over");
+  });
+
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const comboId = +e.dataTransfer.getData('text/plain');
+    const combo = combinations.find(c => c.id === comboId);
+    if (combo) {
+      saveState('move');
+      combo.group = zone.id;
+      renderCombinations();
+      updateStatus(`Moved to ${zone.id}`);
+    }
+  });
+}
+
+function toggleBitSelection(bitEl) {
+  const key = `bit-${bitEl.dataset.comboId}-${bitEl.dataset.bitIndex}`;
+  if (selectedBits.has(key)) {
+    selectedBits.delete(key);
+    bitEl.classList.remove("selected");
+  } else {
+    selectedBits.add(key);
+    bitEl.classList.add("selected");
+  }
+}
+
+function toggleCombinationHighlight(comboEl) {
+  const key = `combo-${comboEl.dataset.id}`;
+  if (highlightedElements.has(key)) {
+    highlightedElements.delete(key);
+    comboEl.classList.remove("highlighted");
+  } else {
+    highlightedElements.add(key);
+    comboEl.classList.add("highlighted");
+  }
+}
+
+function restoreVisualStates() {
+  highlightedElements.forEach(key => {
+    const id = key.split('-')[1];
+    const el = document.querySelector(`.combination[data-id="${id}"]`);
+    if (el) el.classList.add("highlighted");
+  });
+
+  selectedBits.forEach(key => {
+    const [, id, idx] = key.split('-');
+    const el = document.querySelector(`.bit[data-combo-id="${id}"][data-bit-index="${idx}"]`);
+    if (el) el.classList.add("selected");
+  });
+}
+
+function addNewGroup() {
+  const name = prompt("Group name?");
+  if (!name) return;
+  const id = `custom_${groupCounter++}`;
+  groups.push(id);
+  saveState('add_group');
+  renderCombinations();
+  updateStatus(`Created group "${name}"`);
+}
+
+function partitionSelected() {
+  if (!selectedBits.size) return updateStatus("Select some bits first.");
+
+  saveState('partition');
+
+  const partitions = new Map();
+  combinations.forEach(combo => {
+    let key = '';
+    combo.bits.forEach((bit, idx) => {
+      if (selectedBits.has(`bit-${combo.id}-${idx}`)) key += bit;
+    });
+    if (key) {
+      if (!partitions.has(key)) partitions.set(key, []);
+      partitions.get(key).push(combo);
+    }
+  });
+
+  partitions.forEach((list, key) => {
+    const gid = `part_${key}`;
+    groups.push(gid);
+    list.forEach(c => c.group = gid);
+  });
+
+  renderCombinations();
+  updateStatus(`Partitioned into ${partitions.size} groups`);
+}
+
+function undoLastAction() {
+  if (!actionHistory.length) return updateStatus("Nothing to undo.");
+  const prev = actionHistory.pop();
+  combinations = prev.combinations;
+  highlightedElements = prev.highlighted;
+  selectedBits = prev.selectedBits;
+  groups = prev.groups;
+  renderCombinations();
+  updateStatus("Undid last action");
+}
+
+function clearHighlights() {
+  selectedBits.clear();
+  highlightedElements.clear();
+  renderCombinations();
+  updateStatus("Cleared selections");
+}
+
+function resetAll() {
+  if (!confirm("Reset everything?")) return;
+  saveState("reset");
+  combinations = [
+    ...initial3BitCombinations.map((bits, id) => ({ id, bits, group: 'ungrouped' })),
+    ...initial4BitCombinations.map((bits, id) => ({ id: id + 16, bits, group: 'all4bit' }))
+  ];
+  groups = ['group1', 'group2', 'group3', 'ungrouped', 'all4bit'];
+  groupCounter = 5;
+  highlightedElements.clear();
+  selectedBits.clear();
+  renderCombinations();
+  updateStatus("Reset to initial state");
+}
+
+function toggleInstructions() {
+  const msg = `Instructions:
+• Tap red bits to select them
+• Tap combinations to highlight (blue)
+• Drag combinations between groups
+• Use Partition to group by selected bits
+• Undo/Clear/Reset as needed`;
+  alert(msg);
+}
+
+function updateStatus(msg) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  setTimeout(() => {
+    el.textContent = 'Tap bits to select (red) • Drag combinations into groups';
+  }, 3000);
+}
+
+init();
+</script>
+
+</body>
+</html>
